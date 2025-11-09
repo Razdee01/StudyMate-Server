@@ -39,7 +39,13 @@ async function run() {
       const result=await cursor.toArray();
       res.send(result);
     });
-
+    // for details ---single data loading
+    app.get("/partners/:id", async (req, res) => {
+      const id = req.params.id;
+      const partner = await partnersCollection.findOne({ id: id });
+      res.send(partner);
+    });
+    
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
