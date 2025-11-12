@@ -28,12 +28,25 @@ async function run() {
     // Send a ping to confirm a successful connection
     const db = client.db("StudyMate");
     const partnersCollection = db.collection("partners");
-    // app.post("/partners", async (req, res) => {
-    //   const partner = req.body;
-    //   console.log(partner);
-    //   const result = await partnersCollection.insertOne(partner);
-    //   res.send(result);
-    // });
+    const requestsCollection = db.collection("requests");
+    app.post("/requests", async (req, res) => {
+      const data = req.body;
+
+      const result = await requestsCollection.insertOne(data);
+
+      const filter = { _id: new ObjectId(data.partnerId) };
+      const update = { $inc: { partnerCount: 1 } };
+
+      const updateResult = await partnersCollection.updateOne(filter, update);
+
+      // Send back both results
+      res.send({
+        success: true,
+        request: result,
+        updatedPartner: updateResult,
+      });
+    });
+
     app.get("/top-study-partners", async (req, res) => {
       const cursor = partnersCollection.find().sort({ rating: -1 }).limit(3);
       const result = await cursor.toArray();
