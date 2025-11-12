@@ -28,12 +28,12 @@ async function run() {
     // Send a ping to confirm a successful connection
     const db = client.db("StudyMate");
     const partnersCollection = db.collection("partners");
-    app.post("/partners", async (req, res) => {
-      const partner = req.body;
-      console.log(partner);
-      const result = await partnersCollection.insertOne(partner);
-      res.send(result);
-    });
+    // app.post("/partners", async (req, res) => {
+    //   const partner = req.body;
+    //   console.log(partner);
+    //   const result = await partnersCollection.insertOne(partner);
+    //   res.send(result);
+    // });
     app.get("/top-study-partners", async (req, res) => {
       const cursor = partnersCollection.find().sort({ rating: -1 }).limit(3);
       const result = await cursor.toArray();
@@ -48,16 +48,26 @@ async function run() {
     });
 
     app.get("/partners", async (req, res) => {
-      const search = req.query.search;
-      const sort = req.query.sort;
-      const sortOrder = sort === "desc" ? -1 : 1;
+      // const search = req.query.search;
+      // const sort = req.query.sort;
+      // const sortOrder = sort === "desc" ? -1 : 1;
       const cursor = partnersCollection.find();
       const result = await cursor.toArray();
       res.send(result);
     });
     app.post("/partners", async (req, res) => {
       const data = req.body;
-      const result = partnersCollection.insertOne(data);
+      const existingPartner = await partnersCollection.findOne({
+        email: data.email,
+      });
+
+      if (existingPartner) {
+        return res.send({
+          success: false,
+        });
+      }
+      const result = await partnersCollection.insertOne(data);
+
       res.send({
         success: true,
         result,
@@ -69,7 +79,6 @@ async function run() {
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
   } finally {
-    // Ensures that the client will close when you finish/error
   }
 }
 run().catch(console.dir);
