@@ -1,22 +1,22 @@
 const express = require("express");
-const cors=require("cors")
+const cors = require("cors");
 const app = express();
-const { MongoClient, ServerApiVersion } = require("mongodb");
-const port = process.env.PORT ||3000;
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const port = process.env.PORT || 3000;
 
-app.use(cors())
-app.use(express.json())
+app.use(cors());
+app.use(express.json());
 
 const uri =
   "mongodb+srv://StudyMate:u65A3lIrEnRsaPge@cluster0.xujbby0.mongodb.net/?appName=Cluster0";
 
-  const client = new MongoClient(uri, {
-    serverApi: {
-      version: ServerApiVersion.v1,
-      strict: true,
-      deprecationErrors: true,
-    },
-  });
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+});
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
@@ -35,22 +35,34 @@ async function run() {
       res.send(result);
     });
     app.get("/top-study-partners", async (req, res) => {
-      const cursor=partnersCollection.find().sort({rating:-1}).limit(3);
-      const result=await cursor.toArray();
+      const cursor = partnersCollection.find().sort({ rating: -1 }).limit(3);
+      const result = await cursor.toArray();
       res.send(result);
     });
-    // for details ---single data loading
+    // for details --- single data loading
     app.get("/partners/:id", async (req, res) => {
       const id = req.params.id;
-      const partner = await partnersCollection.findOne({ id: id });
+      const query = { _id: new ObjectId(id) };
+      const partner = await partnersCollection.findOne(query);
       res.send(partner);
     });
 
-    app.get("/partners",async(req,es)=>{
-      const cursor=partnersCollection.find();
-      const result=await cursor.toArray();
-      es.send(result);
-    })
+    app.get("/partners", async (req, res) => {
+      const search = req.query.search;
+      const sort = req.query.sort;
+      const sortOrder = sort === "desc" ? -1 : 1;
+      const cursor = partnersCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+    app.post("/partners", async (req, res) => {
+      const data = req.body;
+      const result = partnersCollection.insertOne(data);
+      res.send({
+        success: true,
+        result,
+      });
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
@@ -58,7 +70,6 @@ async function run() {
     );
   } finally {
     // Ensures that the client will close when you finish/error
-    
   }
 }
 run().catch(console.dir);
