@@ -31,37 +31,37 @@ async function run() {
     const requestsCollection = db.collection("requests");
 
     // 🟢 Update a specific request
-    // app.put("/requests/:id", async (req, res) => {
-    //   try {
-    //     const id = req.params.id;
-    //     const updatedData = req.body;
+    app.put("/requests/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const updatedData = req.body;
 
-    //     const result = await requestsCollection.updateOne(
-    //       { _id: new ObjectId(id) },
-    //       { $set: updatedData }
-    //     );
+        const result = await requestsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData }
+        );
 
-    //     res.json(result);
-    //   } catch (err) {
-    //     console.error("Error updating request:", err);
-    //     res.status(500).json({ error: "Failed to update request" });
-    //   }
-    // });
+        res.json(result);
+      } catch (err) {
+        console.error("Error updating request:", err);
+        res.status(500).json({ error: "Failed to update request" });
+      }
+    });
 
     // // 🟢 Get all requests sent by a specific user
-    // app.get("/requests/sent/:email", async (req, res) => {
-    //   try {
-    //     const email = req.params.email;
-    //     const requests = await requestsCollection
-    //       .find({ sent_by: email })
-    //       .toArray();
+    app.get("/requests/sent/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const requests = await requestsCollection
+          .find({ sent_by: email })
+          .toArray();
 
-    //     res.json(requests);
-    //   } catch (err) {
-    //     console.error("Error fetching sent requests:", err);
-    //     res.status(500).json({ error: err.message });
-    //   }
-    // });
+        res.json(requests);
+      } catch (err) {
+        console.error("Error fetching sent requests:", err);
+        res.status(500).json({ error: err.message });
+      }
+    });
 
     app.post("/requests", async (req, res) => {
       try {
