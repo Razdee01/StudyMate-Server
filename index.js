@@ -31,24 +31,24 @@ async function run() {
     const requestsCollection = db.collection("requests");
 
     // 🟢 Update a specific request
-    app.put("/requests/:id", async (req, res) => {
-      try {
-        const id = req.params.id;
-        const updatedData = req.body;
+    // app.put("/requests/:id", async (req, res) => {
+    //   try {
+    //     const id = req.params.id;
+    //     const updatedData = req.body;
 
-        const result = await requestsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: updatedData }
-        );
+    //     const result = await requestsCollection.updateOne(
+    //       { _id: new ObjectId(id) },
+    //       { $set: updatedData }
+    //     );
 
-        res.json(result);
-      } catch (err) {
-        console.error("Error updating request:", err);
-        res.status(500).json({ error: "Failed to update request" });
-      }
-    });
+    //     res.json(result);
+    //   } catch (err) {
+    //     console.error("Error updating request:", err);
+    //     res.status(500).json({ error: "Failed to update request" });
+    //   }
+    // });
 
-    // 🟢 Get all requests sent by a specific user
+    // // 🟢 Get all requests sent by a specific user
     // app.get("/requests/sent/:email", async (req, res) => {
     //   try {
     //     const email = req.params.email;
@@ -104,9 +104,6 @@ async function run() {
     });
 
     app.get("/partners", async (req, res) => {
-      // const search = req.query.search;
-      // const sort = req.query.sort;
-      // const sortOrder = sort === "desc" ? -1 : 1;
       const cursor = partnersCollection.find();
       const result = await cursor.toArray();
       res.send(result);
