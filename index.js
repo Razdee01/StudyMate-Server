@@ -30,71 +30,55 @@ async function run() {
     const partnersCollection = db.collection("partners");
     const requestsCollection = db.collection("requests");
 
-    // 🟢 Update a specific request
+ 
     app.put("/requests/:id", async (req, res) => {
-      try {
-        const id = req.params.id;
-        const updatedData = req.body;
+      const id = req.params.id;
+      const updatedData = req.body;
 
-        const result = await requestsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: updatedData }
-        );
+      const result = await requestsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedData }
+      );
 
-        res.json(result);
-      } catch (err) {
-        console.error("Error updating request:", err);
-        res.status(500).json({ error: "Failed to update request" });
-      }
+      res.json(result);
     });
 
-    // // 🟢 Get all requests sent by a specific user
     app.get("/requests/sent/:email", async (req, res) => {
-      try {
-        const email = req.params.email;
-        const requests = await requestsCollection
-          .find({ sent_by: email })
-          .toArray();
-
-        res.json(requests);
-      } catch (err) {
-        console.error("Error fetching sent requests:", err);
-        res.status(500).json({ error: err.message });
-      }
+      const email = req.params.email;
+      const requests = await requestsCollection
+        .find({ sent_by: email })
+        .toArray();
+      res.json(requests);
     });
 
     app.post("/requests", async (req, res) => {
-      try {
-        const data = req.body;
+      const data = req.body;
 
-        if (!data.partnerId) {
-          return res.status(400).json({ error: "Missing partnerId" });
-        }
-
-        const result = await requestsCollection.insertOne(data);
-
-        const filter = { _id: new ObjectId(data.partnerId) };
-
-        // ✅ Convert partnerCount to number if needed
-        const partner = await partnersCollection.findOne(filter);
-        let partnerCount = parseInt(partner.partnerCount) || 0;
-
-        await partnersCollection.updateOne(filter, {
-          $set: { partnerCount: partnerCount + 1 },
-        });
-
-        res.json({ success: true, message: "Request sent successfully" });
-      } catch (err) {
-        console.error("Error creating request:", err);
-        res.status(500).json({ error: err.message });
+      if (!data.partnerId) {
+        return res.status(400).json({ error: "Missing partnerId" });
       }
-    });
 
+      const result = await requestsCollection.insertOne(data);
+      const filter = { _id: new ObjectId(data.partnerId) };
+      const partner = await partnersCollection.findOne(filter);
+      let partnerCount = parseInt(partner.partnerCount) || 0;
+
+      await partnersCollection.updateOne(filter, {
+        $set: { partnerCount: partnerCount + 1 },
+      });
+
+      res.json({ success: true, message: "Request sent successfully" });
+    });
+    
     app.get("/top-study-partners", async (req, res) => {
-      const cursor = partnersCollection.find().sort({ rating: -1 }).limit(3);
+      const cursor = partnersCollection
+        .find({ rating: { $exists: true } })
+        .sort({ rating: -1 }) 
+        .limit(3);
       const result = await cursor.toArray();
       res.send(result);
     });
+    
     // for details --- single data loading
     app.get("/partners/:id", async (req, res) => {
       const id = req.params.id;
