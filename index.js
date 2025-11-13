@@ -29,22 +29,65 @@ async function run() {
     const db = client.db("StudyMate");
     const partnersCollection = db.collection("partners");
     const requestsCollection = db.collection("requests");
+
+    // 🟢 Update a specific request
+    app.put("/requests/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const updatedData = req.body;
+
+        const result = await requestsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData }
+        );
+
+        res.json(result);
+      } catch (err) {
+        console.error("Error updating request:", err);
+        res.status(500).json({ error: "Failed to update request" });
+      }
+    });
+
+    // 🟢 Get all requests sent by a specific user
+    // app.get("/requests/sent/:email", async (req, res) => {
+    //   try {
+    //     const email = req.params.email;
+    //     const requests = await requestsCollection
+    //       .find({ sent_by: email })
+    //       .toArray();
+
+    //     res.json(requests);
+    //   } catch (err) {
+    //     console.error("Error fetching sent requests:", err);
+    //     res.status(500).json({ error: err.message });
+    //   }
+    // });
+
     app.post("/requests", async (req, res) => {
-      const data = req.body;
+      try {
+        const data = req.body;
 
-      const result = await requestsCollection.insertOne(data);
+        if (!data.partnerId) {
+          return res.status(400).json({ error: "Missing partnerId" });
+        }
 
-      const filter = { _id: new ObjectId(data.partnerId) };
-      const update = { $inc: { partnerCount: 1 } };
+        const result = await requestsCollection.insertOne(data);
 
-      const updateResult = await partnersCollection.updateOne(filter, update);
+        const filter = { _id: new ObjectId(data.partnerId) };
 
-      // Send back both results
-      res.send({
-        success: true,
-        request: result,
-        updatedPartner: updateResult,
-      });
+        // ✅ Convert partnerCount to number if needed
+        const partner = await partnersCollection.findOne(filter);
+        let partnerCount = parseInt(partner.partnerCount) || 0;
+
+        await partnersCollection.updateOne(filter, {
+          $set: { partnerCount: partnerCount + 1 },
+        });
+
+        res.json({ success: true, message: "Request sent successfully" });
+      } catch (err) {
+        console.error("Error creating request:", err);
+        res.status(500).json({ error: err.message });
+      }
     });
 
     app.get("/top-study-partners", async (req, res) => {
@@ -85,6 +128,25 @@ async function run() {
         success: true,
         result,
       });
+    });
+    // DELETE request
+    app.delete("/requests/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await requestsCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
+
+    // UPDATE request
+    app.put("/requests/:id", async (req, res) => {
+      const id = req.params.id;
+      const updated = req.body;
+      const result = await requestsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updated }
+      );
+      res.send(result);
     });
 
     await client.db("admin").command({ ping: 1 });
