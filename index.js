@@ -29,7 +29,6 @@ async function run() {
     const partnersCollection = db.collection("partners");
     const requestsCollection = db.collection("requests");
 
- 
     app.put("/requests/:id", async (req, res) => {
       const id = req.params.id;
       const updatedData = req.body;
@@ -68,16 +67,16 @@ async function run() {
 
       res.json({ success: true, message: "Request sent successfully" });
     });
-    
+
     app.get("/top-study-partners", async (req, res) => {
       const cursor = partnersCollection
         .find({ rating: { $exists: true } })
-        .sort({ rating: -1 }) 
+        .sort({ rating: -1 })
         .limit(3);
       const result = await cursor.toArray();
       res.send(result);
     });
-    
+
     // for details --- single data loading
     app.get("/partners/:id", async (req, res) => {
       const id = req.params.id;
@@ -127,6 +126,17 @@ async function run() {
         { $set: updated }
       );
       res.send(result);
+    });
+    // Get current user's profile by email
+    app.get("/my-profile", async (req, res) => {
+      const email = req.query.email;
+      if (!email) return res.status(400).json({ error: "Email required" });
+
+      const profile = await partnersCollection.findOne({ email });
+      if (!profile) {
+        return res.status(404).json({ message: "No profile found" });
+      }
+      res.json(profile);
     });
 
     // await client.db("admin").command({ ping: 1 });
