@@ -7,8 +7,11 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 require("dotenv").config();
-const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.xujbby0.mongodb.net/?appName=Cluster0`;
 
+const encodedUsername = encodeURIComponent(process.env.DB_USERNAME);
+const encodedPassword = encodeURIComponent(process.env.DB_PASSWORD);
+
+const uri = `mongodb+srv://${encodedUsername}:${encodedPassword}@cluster0.xujbby0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -20,24 +23,24 @@ const client = new MongoClient(uri, {
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
+
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
-    // Send a ping to confirm a successful connection
+    // THIS LINE WAS COMMENTED — UNCOMMENT IT!
+    await client.connect(); // ← Critical: Connect to MongoDB
+
     const db = client.db("StudyMate");
     const partnersCollection = db.collection("partners");
     const requestsCollection = db.collection("requests");
 
+    // All your routes here (unchanged — they're good)
     app.put("/requests/:id", async (req, res) => {
       const id = req.params.id;
       const updatedData = req.body;
-
       const result = await requestsCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: updatedData }
       );
-
       res.json(result);
     });
 
@@ -51,20 +54,16 @@ async function run() {
 
     app.post("/requests", async (req, res) => {
       const data = req.body;
-
       if (!data.partnerId) {
         return res.status(400).json({ error: "Missing partnerId" });
       }
-
       const result = await requestsCollection.insertOne(data);
       const filter = { _id: new ObjectId(data.partnerId) };
       const partner = await partnersCollection.findOne(filter);
       let partnerCount = parseInt(partner.partnerCount) || 0;
-
       await partnersCollection.updateOne(filter, {
         $set: { partnerCount: partnerCount + 1 },
       });
-
       res.json({ success: true, message: "Request sent successfully" });
     });
 
@@ -77,7 +76,6 @@ async function run() {
       res.send(result);
     });
 
-    // for details --- single data loading
     app.get("/partners/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -90,36 +88,32 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
- app.post("/partners", async (req, res) => {
-   let data = req.body;
 
-   // Normalize email to lowercase
-   const normalizedEmail = data.email.toLowerCase();
+    app.post("/partners", async (req, res) => {
+      let data = req.body;
+      const normalizedEmail = data.email.toLowerCase();
 
-   const existing = await partnersCollection.findOne({
-     email: { $regex: new RegExp("^" + normalizedEmail + "$", "i") }, // case-insensitive
-     // or just save lowercase
-   });
+      const existing = await partnersCollection.findOne({
+        email: { $regex: new RegExp("^" + normalizedEmail + "$", "i") },
+      });
 
-   if (existing) {
-     return res.json({
-       success: false,
-       message: "Profile already exists with this email",
-     });
-   }
+      if (existing) {
+        return res.json({
+          success: false,
+          message: "Profile already exists with this email",
+        });
+      }
 
-   // Save email as lowercase for consistency
-   data.email = normalizedEmail;
+      data.email = normalizedEmail;
+      const result = await partnersCollection.insertOne(data);
 
-   const result = await partnersCollection.insertOne(data);
+      res.json({
+        success: true,
+        message: "Profile created successfully",
+        insertedId: result.insertedId,
+      });
+    });
 
-   res.json({
-     success: true,
-     message: "Profile created successfully",
-     insertedId: result.insertedId,
-   });
- });
-    // DELETE request
     app.delete("/requests/:id", async (req, res) => {
       const id = req.params.id;
       const result = await requestsCollection.deleteOne({
@@ -128,7 +122,6 @@ async function run() {
       res.send(result);
     });
 
-    // UPDATE request
     app.put("/requests/:id", async (req, res) => {
       const id = req.params.id;
       const updated = req.body;
@@ -138,32 +131,31 @@ async function run() {
       );
       res.send(result);
     });
-    // Get current user's profile by email
- app.get("/my-profile", async (req, res) => {
-   let email = req.query.email;
-   if (!email) return res.status(400).json({ error: "Email required" });
 
-   email = email.toLowerCase();
+    app.get("/my-profile", async (req, res) => {
+      let email = req.query.email;
+      if (!email) return res.status(400).json({ error: "Email required" });
 
-   const profile = await partnersCollection.findOne({
-     email: { $regex: new RegExp("^" + email + "$", "i") },
-   })
+      email = email.toLowerCase();
 
-   if (!profile) {
-     return res.status(404).json({ message: "No profile found" });
-   }
-   res.json(profile);
- });
+      const profile = await partnersCollection.findOne({
+        email: { $regex: new RegExp("^" + email + "$", "i") },
+      });
 
-    // await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
-  } finally {
+      if (!profile) {
+        return res.status(404).json({ message: "No profile found" });
+      }
+      res.json(profile);
+    });
+
+    console.log("Connected to MongoDB successfully!");
+  } catch (error) {
+    console.error("MongoDB connection error:", error);
   }
 }
+
 run().catch(console.dir);
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+  console.log(`Server running on port ${port}`);
 });
