@@ -90,28 +90,35 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
-  app.post("/partners", async (req, res) => {
-    const data = req.body;
+ app.post("/partners", async (req, res) => {
+   let data = req.body;
 
-    // Check if profile with this email already exists
-    const existing = await partnersCollection.findOne({ email: data.email });
+   // Normalize email to lowercase
+   const normalizedEmail = data.email.toLowerCase();
 
-    if (existing) {
-      return res.json({
-        success: false,
-        message: "Profile already exists with this email",
-      });
-    }
+   const existing = await partnersCollection.findOne({
+     email: { $regex: new RegExp("^" + normalizedEmail + "$", "i") }, // case-insensitive
+     // or just save lowercase
+   });
 
-    // Only insert if no duplicate
-    const result = await partnersCollection.insertOne(data);
+   if (existing) {
+     return res.json({
+       success: false,
+       message: "Profile already exists with this email",
+     });
+   }
 
-    res.json({
-      success: true,
-      message: "Profile created successfully",
-      insertedId: result.insertedId,
-    });
-  });
+   // Save email as lowercase for consistency
+   data.email = normalizedEmail;
+
+   const result = await partnersCollection.insertOne(data);
+
+   res.json({
+     success: true,
+     message: "Profile created successfully",
+     insertedId: result.insertedId,
+   });
+ });
     // DELETE request
     app.delete("/requests/:id", async (req, res) => {
       const id = req.params.id;
@@ -132,16 +139,21 @@ async function run() {
       res.send(result);
     });
     // Get current user's profile by email
-    app.get("/my-profile", async (req, res) => {
-      const email = req.query.email;
-      if (!email) return res.status(400).json({ error: "Email required" });
+ app.get("/my-profile", async (req, res) => {
+   let email = req.query.email;
+   if (!email) return res.status(400).json({ error: "Email required" });
 
-      const profile = await partnersCollection.findOne({ email });
-      if (!profile) {
-        return res.status(404).json({ message: "No profile found" });
-      }
-      res.json(profile);
-    });
+   email = email.toLowerCase();
+
+   const profile = await partnersCollection.findOne({
+     email: { $regex: new RegExp("^" + email + "$", "i") },
+   });
+
+   if (!profile) {
+     return res.status(404).json({ message: "No profile found" });
+   }
+   res.json(profile);
+ });
 
     // await client.db("admin").command({ ping: 1 });
     console.log(
