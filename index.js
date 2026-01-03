@@ -90,24 +90,28 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
-    app.post("/partners", async (req, res) => {
-      const data = req.body;
-      const existingPartner = await partnersCollection.findOne({
-        email: data.email,
-      });
+  app.post("/partners", async (req, res) => {
+    const data = req.body;
 
-      if (existingPartner) {
-        return res.send({
-          success: false,
-        });
-      }
-      const result = await partnersCollection.insertOne(data);
+    // Check if profile with this email already exists
+    const existing = await partnersCollection.findOne({ email: data.email });
 
-      res.send({
-        success: true,
-        result,
+    if (existing) {
+      return res.json({
+        success: false,
+        message: "Profile already exists with this email",
       });
+    }
+
+    // Only insert if no duplicate
+    const result = await partnersCollection.insertOne(data);
+
+    res.json({
+      success: true,
+      message: "Profile created successfully",
+      insertedId: result.insertedId,
     });
+  });
     // DELETE request
     app.delete("/requests/:id", async (req, res) => {
       const id = req.params.id;
