@@ -57,17 +57,21 @@ connectDB();
 app.get("/", (req, res) => {
   res.send("StudyMate Server is running!");
 });
-
 app.get("/top-study-partners", async (req, res) => {
   try {
     const cursor = partnersCollection
-      .find({ $or: [{ rating: { $exists: true } }, { rating: { $gte: 0 } }] }) // remove rating filter or use $or
-      .sort({ partnerCount: -1 }) // sort by partnerCount or created date
+      .find() // show all
+      .sort({ partnerCount: -1 }) // sort by most popular
       .limit(3);
     const result = await cursor.toArray();
-    res.json(result);
+    if (result.length === 0) {
+      res.json([]); // empty array if no partners
+    } else {
+      res.json(result);
+    }
   } catch (error) {
-    res.status(500).json({ error: "Failed" });
+    console.error("Top partners error:", error);
+    res.status(500).json({ error: "Failed to fetch partners" });
   }
 });
 
