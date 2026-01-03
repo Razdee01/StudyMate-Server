@@ -60,18 +60,14 @@ app.get("/", (req, res) => {
 app.get("/top-study-partners", async (req, res) => {
   try {
     const cursor = partnersCollection
-      .find() // show all
-      .sort({ partnerCount: -1 }) // sort by most popular
+      .find() // show all partners
+      .sort({ partnerCount: -1 }) // sort by most requests (popular)
       .limit(3);
     const result = await cursor.toArray();
-    if (result.length === 0) {
-      res.json([]); // empty array if no partners
-    } else {
-      res.json(result);
-    }
+    res.json(result);
   } catch (error) {
     console.error("Top partners error:", error);
-    res.status(500).json({ error: "Failed to fetch partners" });
+    res.status(500).json({ error: "Failed to fetch" });
   }
 });
 
