@@ -61,13 +61,13 @@ app.get("/", (req, res) => {
 app.get("/top-study-partners", async (req, res) => {
   try {
     const cursor = partnersCollection
-      .find({ rating: { $exists: true } })
-      .sort({ rating: -1 })
+      .find({ $or: [{ rating: { $exists: true } }, { rating: { $gte: 0 } }] }) // remove rating filter or use $or
+      .sort({ partnerCount: -1 }) // sort by partnerCount or created date
       .limit(3);
     const result = await cursor.toArray();
-    res.send(result);
+    res.json(result);
   } catch (error) {
-    res.status(500).send(error);
+    res.status(500).json({ error: "Failed" });
   }
 });
 
