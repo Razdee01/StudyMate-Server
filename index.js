@@ -147,7 +147,7 @@ async function run() {
 
    const profile = await partnersCollection.findOne({
      email: { $regex: new RegExp("^" + email + "$", "i") },
-   });
+   })
 
    if (!profile) {
      return res.status(404).json({ message: "No profile found" });
