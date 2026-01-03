@@ -60,14 +60,14 @@ app.get("/", (req, res) => {
 app.get("/top-study-partners", async (req, res) => {
   try {
     const cursor = partnersCollection
-      .find()
-      .sort({ partnerCount: -1 }) // or _id: -1 for newest
+      .find() // show all partners
+      .sort({ partnerCount: -1 }) // sort by most popular (or _id: -1 for newest)
       .limit(3);
     const result = await cursor.toArray();
-    res.json(result || []);
+    res.json(result);
   } catch (error) {
-    console.error("Top partners error:", error);
-    res.json([]); // return empty array on error, not 500
+    console.error(error);
+    res.status(500).json({ error: "Failed" });
   }
 });
 
