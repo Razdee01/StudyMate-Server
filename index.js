@@ -4,15 +4,12 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 
 const app = express();
-const port = process.env.PORT || 3000;
-
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection Setup
-const encodedUsername = encodeURIComponent(process.env.DB_USERNAME);
-const encodedPassword = encodeURIComponent(process.env.DB_PASSWORD);
+// MongoDB URI with encoded credentials
+const encodedUsername = encodeURIComponent(process.env.DB_USERNAME || "");
+const encodedPassword = encodeURIComponent(process.env.DB_PASSWORD || "");
 const uri = `mongodb+srv://${encodedUsername}:${encodedPassword}@cluster0.xujbby0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 const client = new MongoClient(uri, {
@@ -23,81 +20,67 @@ const client = new MongoClient(uri, {
   },
 });
 
-// Global collection variables
-let partnersCollection;
-let requestsCollection;
-
-async function connectDB() {
-  try {
-    await client.connect();
-    const db = client.db("StudyMate");
-    partnersCollection = db.collection("partners");
-    requestsCollection = db.collection("requests");
-    console.log("Connected to MongoDB successfully!");
-  } catch (error) {
-    console.error("MongoDB connection error:", error);
-  }
-}
-
-// Initialize connection
-connectDB();
-
-// Middleware to prevent errors if DB isn't connected yet
-// app.use((req, res, next) => {
-//   if (!partnersCollection || !requestsCollection) {
-//     return res
-//       .status(503)
-//       .json({ error: "Database connecting... please try again in a moment." });
-//   }
-//   next();
-// });
-
-// --- ROUTES ---
-
 app.get("/", (req, res) => {
   res.send("StudyMate Server is running!");
 });
+
+// Helper to get DB (lazy connect)
+async function getDB() {
+  try {
+    await client.connect();
+    return client.db("StudyMate");
+  } catch (error) {
+    console.error("DB connection error:", error);
+    throw error;
+  }
+}
+
+// --- ROUTES ---
+
 app.get("/top-study-partners", async (req, res) => {
   try {
-    const cursor = partnersCollection
-      .find() // show all partners
-      .sort({ partnerCount: -1 }) // sort by most popular (requests)
-      .limit(3);
-    const result = await cursor.toArray();
+    const db = await getDB();
+    const result = await db
+      .collection("partners")
+      .find()
+      .sort({ partnerCount: -1 })
+      .limit(3)
+      .toArray();
     res.json(result);
   } catch (error) {
-    console.error("Top partners error:", error);
-    res.json([]); // empty on error
+    res.json([]);
   }
 });
 
 app.get("/partners", async (req, res) => {
   try {
-    const cursor = partnersCollection.find();
-    const result = await cursor.toArray();
-    res.send(result);
+    const db = await getDB();
+    const result = await db.collection("partners").find().toArray();
+    res.json(result);
   } catch (error) {
-    res.status(500).send(error);
+    res.json([]);
   }
 });
 
 app.get("/partners/:id", async (req, res) => {
   try {
-    const id = req.params.id;
-    const query = { _id: new ObjectId(id) };
-    const partner = await partnersCollection.findOne(query);
-    res.send(partner);
+    const db = await getDB();
+    const partner = await db.collection("partners").findOne({
+      _id: new ObjectId(req.params.id),
+    });
+    res.json(partner || {});
   } catch (error) {
-    res.status(500).send(error);
+    res.json({});
   }
 });
 
 app.post("/partners", async (req, res) => {
   try {
+    const db = await getDB();
     let data = req.body;
     const normalizedEmail = data.email.toLowerCase();
 
-    const existing = await partnersCollection.findOne({
+    const existing = await db.collection("partners").findOne({
       email: { $regex: new RegExp("^" + normalizedEmail + "$", "i") },
     });
 
@@ -109,7 +92,7 @@ app.post("/partners", async (req, res) => {
     }
 
     data.email = normalizedEmail;
-    const result = await partnersCollection.insertOne(data);
+    const result = await db.collection("partners").insertOne(data);
 
     res.json({
       success: true,
@@ -117,7 +100,7 @@ app.post("/partners", async (req, res) => {
       insertedId: result.insertedId,
     });
   } catch (error) {
-    res.status(500).send(error);
+    res.status(500).json({ error: "Failed" });
   }
 });
 
@@ -127,7 +110,8 @@ app.get("/my-profile", async (req, res) => {
     if (!email) return res.status(400).json({ error: "Email required" });
 
     email = email.toLowerCase();
-    const profile = await partnersCollection.findOne({
+    const db = await getDB();
+    const profile = await db.collection("partners").findOne({
       email: { $regex: new RegExp("^" + email + "$", "i") },
     });
 
@@ -136,73 +120,69 @@ app.get("/my-profile", async (req, res) => {
     }
     res.json(profile);
   } catch (error) {
-    res.status(500).send(error);
+    res.status(500).json({ error: "Failed" });
   }
 });
 
-// --- REQUESTS ROUTES ---
-
 app.post("/requests", async (req, res) => {
   try {
+    const db = await getDB();
     const data = req.body;
     if (!data.partnerId) {
       return res.status(400).json({ error: "Missing partnerId" });
     }
-    const result = await requestsCollection.insertOne(data);
+    const result = await db.collection("requests").insertOne(data);
     const filter = { _id: new ObjectId(data.partnerId) };
-    const partner = await partnersCollection.findOne(filter);
+    const partner = await db.collection("partners").findOne(filter);
     let partnerCount = parseInt(partner.partnerCount) || 0;
-    await partnersCollection.updateOne(filter, {
+    await db.collection("partners").updateOne(filter, {
       $set: { partnerCount: partnerCount + 1 },
     });
     res.json({ success: true, message: "Request sent successfully" });
   } catch (error) {
-    res.status(500).send(error);
+    res.status(500).json({ error: "Failed" });
   }
 });
 
 app.get("/requests/sent/:email", async (req, res) => {
   try {
+    const db = await getDB();
     const email = req.params.email;
-    const requests = await requestsCollection
+    const requests = await db
+      .collection("requests")
       .find({ sent_by: email })
       .toArray();
     res.json(requests);
   } catch (error) {
-    res.status(500).send(error);
+    res.json([]);
   }
 });
 
 app.put("/requests/:id", async (req, res) => {
   try {
+    const db = await getDB();
     const id = req.params.id;
     const updatedData = req.body;
-    const result = await requestsCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updatedData }
-    );
+    const result = await db
+      .collection("requests")
+      .updateOne({ _id: new ObjectId(id) }, { $set: updatedData });
     res.json(result);
   } catch (error) {
-    res.status(500).send(error);
+    res.status(500).json({ error: "Failed" });
   }
 });
 
 app.delete("/requests/:id", async (req, res) => {
   try {
+    const db = await getDB();
     const id = req.params.id;
-    const result = await requestsCollection.deleteOne({
+    const result = await db.collection("requests").deleteOne({
       _id: new ObjectId(id),
     });
-    res.send(result);
+    res.json(result);
   } catch (error) {
-    res.status(500).send(error);
+    res.status(500).json({ error: "Failed" });
   }
 });
 
-// Start Server locally
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
-
-// EXPORT FOR VERCEL
 module.exports = app;
