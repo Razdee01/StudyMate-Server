@@ -43,14 +43,14 @@ async function connectDB() {
 connectDB();
 
 // Middleware to prevent errors if DB isn't connected yet
-app.use((req, res, next) => {
-  if (!partnersCollection || !requestsCollection) {
-    return res
-      .status(503)
-      .json({ error: "Database connecting... please try again in a moment." });
-  }
-  next();
-});
+// app.use((req, res, next) => {
+//   if (!partnersCollection || !requestsCollection) {
+//     return res
+//       .status(503)
+//       .json({ error: "Database connecting... please try again in a moment." });
+//   }
+//   next();
+// });
 
 // --- ROUTES ---
 
