@@ -103,10 +103,10 @@ app.post("/partners", async (req, res) => {
     res.status(500).json({ error: "Failed" });
   }
 });
-// Add this to your server.js
+
 app.patch("/update-profile", async (req, res) => {
   try {
-    const db = await getDB(); // <--- Added this line to fix the crash
+    const db = await getDB();
     const email = req.query.email;
     const updatedData = req.body;
 
@@ -119,7 +119,11 @@ app.patch("/update-profile", async (req, res) => {
       $set: updatedData,
     };
 
-    const result = await db.collection("partners").updateOne(query, updateDoc);
+   
+    const result = await db
+      .collection("partners")
+      .updateOne(query, updateDoc, { upsert: true });
+
     res.send(result);
   } catch (error) {
     console.error("Update Error:", error);
