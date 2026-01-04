@@ -104,15 +104,27 @@ app.post("/partners", async (req, res) => {
   }
 });
 // Add this to your server.js
-app.patch('/update-profile', async (req, res) => {
-  const email = req.query.email;
-  const updatedData = req.body;
-  const query = { email: email };
-  const updateDoc = {
-    $set: updatedData,
-  };
-  const result = await db.collection("partners").updateOne(query, updateDoc);
-  res.send(result);
+app.patch("/update-profile", async (req, res) => {
+  try {
+    const db = await getDB(); // <--- Added this line to fix the crash
+    const email = req.query.email;
+    const updatedData = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const query = { email: email };
+    const updateDoc = {
+      $set: updatedData,
+    };
+
+    const result = await db.collection("partners").updateOne(query, updateDoc);
+    res.send(result);
+  } catch (error) {
+    console.error("Update Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 app.get("/my-profile", async (req, res) => {
