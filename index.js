@@ -103,6 +103,17 @@ app.post("/partners", async (req, res) => {
     res.status(500).json({ error: "Failed" });
   }
 });
+// Add this to your server.js
+app.patch('/update-profile', async (req, res) => {
+  const email = req.query.email;
+  const updatedData = req.body;
+  const query = { email: email };
+  const updateDoc = {
+    $set: updatedData,
+  };
+  const result = await db.collection("partners").updateOne(query, updateDoc);
+  res.send(result);
+});
 
 app.get("/my-profile", async (req, res) => {
   try {
