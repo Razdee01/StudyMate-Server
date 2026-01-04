@@ -6,6 +6,7 @@ require("dotenv").config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+// my .env suddenly got deleted so i had do it this way
 
 // MongoDB URI with encoded credentials
 const encodedUsername = encodeURIComponent(process.env.DB_USERNAME || "");
