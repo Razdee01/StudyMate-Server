@@ -43,7 +43,7 @@ app.get("/top-study-partners", async (req, res) => {
     const result = await db
       .collection("partners")
       .find()
-      .sort({ partnerCount: -1 })
+      .sort({ rating: -1 })
       .limit(3)
       .toArray();
     res.json(result);
