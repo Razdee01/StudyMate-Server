@@ -4,7 +4,15 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "study-mate-client-7fnb.vercel.app"
+    ],
+    credentials: true,
+  }),
+);
 app.use(express.json());
 // my .env suddenly got deleted so i had do it this way
 
